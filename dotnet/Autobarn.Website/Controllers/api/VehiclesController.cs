@@ -2,7 +2,9 @@
 using Autobarn.Data.Entities;
 using Autobarn.Website.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using System.Collections.Generic;
+using System.Dynamic;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -18,10 +20,14 @@ namespace Autobarn.Website.Controllers.api {
 
 		// GET: api/vehicles
 		[HttpGet]
-		public IEnumerable<Vehicle> Get() {
-			return db.ListVehicles();
-		}
-
+		[Produces("application/hal+json")]
+		public IActionResult Get(int index = 0, int count = 10) {
+			var items = db.ListVehicles().Skip(index).Take(count);
+			var total = db.CountVehicles();
+			var _links = Paginate("/api/vehicles", index, count, total);
+			var result = new { _links, index, count, total, items };
+			return Ok(result);
+}
 		// GET api/vehicles/ABC123
 		[HttpGet("{id}")]
 		public IActionResult Get(string id) {
@@ -65,6 +71,16 @@ namespace Autobarn.Website.Controllers.api {
 			if (vehicle == default) return NotFound();
 			db.DeleteVehicle(vehicle);
 			return NoContent();
+		}
+
+		private dynamic Paginate(string url, int index, int count, int total) {
+			dynamic links = new ExpandoObject();
+			links.self = new { href = url };
+			links.final = new { href = $"{url}?index={total - (total % count)}&count={count}" };
+			links.first = new { href = $"{url}?index=0&count={count}" };
+			if (index > 0) links.previous = new { href = $"{url}?index={index - count}&count={count}" };
+			if (index + count < total) links.next = new { href = $"{url}?index={index + count}&count={count}" };
+			return links;
 		}
 	}
 }
