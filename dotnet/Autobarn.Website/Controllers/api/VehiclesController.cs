@@ -1,12 +1,9 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel;
-using System.Dynamic;
+﻿using System.Dynamic;
 using System.Linq;
 using Autobarn.Data;
 using Autobarn.Data.Entities;
 using Autobarn.Website.Models;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -23,17 +20,18 @@ namespace Autobarn.Website.Controllers.api {
 		// GET: api/vehicles
 		[HttpGet]
 		[Produces ("application/hal+json")]
-		public IActionResult Get (char index = 'A') {
-			if ((int) index < 122 && (int) index > 97) {
-				index = (char) ((int) index - 40);
-			}
-			if ((int) index < 65 || (int) index > 90) {
-				return NotFound ();
-			}
-			var items = db.ListVehicles ().Where (v => v.Registration.StartsWith (index)).ToList ();
+		public IActionResult Get (int index = 0, int count = 10) {
+			var items = db.ListVehicles ().Skip (index).Take (count).ToList ()
+				.Select (v => v.ToResource ());
 			var total = db.CountVehicles ();
-			var _links = Paginate ("/api/vehicles", index);
-			var result = new { _links, index, items.Count, total, items };
+			var _links = HypermediaExtensions.Paginate ("/api/vehicles", index, count, total);
+			var result = new {
+				_links,
+				total,
+				index,
+				count = items.Count (),
+				items
+			};
 			return Ok (result);
 		}
 
@@ -140,21 +138,5 @@ namespace Autobarn.Website.Controllers.api {
 			links.next = new { href = $"{url}?index={getNextChar(firstLetter)}" };
 			return links;
 		}
-	}
-}
-
-public static class HypermediaExtensions {
-	public static dynamic ToDynamic (this object value) {
-		IDictionary<string, object> expando = new ExpandoObject ();
-		var properties = TypeDescriptor.GetProperties (value.GetType ());
-		foreach (PropertyDescriptor prop in properties) {
-			if (Ignore (prop)) continue;
-			expando.Add (prop.Name, prop.GetValue (value));
-		}
-		return (ExpandoObject) expando;
-	}
-
-	private static bool Ignore (PropertyDescriptor prop) {
-		return prop.Attributes.OfType<JsonIgnoreAttribute> ().Any ();
 	}
 }

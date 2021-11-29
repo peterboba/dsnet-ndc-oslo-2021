@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Autobarn.Data {
 	public interface IAutobarnDatabase {
+		public int CountManufacturers();
 		public int CountVehicles();
 		public IEnumerable<Vehicle> ListVehicles();
 		public IEnumerable<Manufacturer> ListManufacturers();

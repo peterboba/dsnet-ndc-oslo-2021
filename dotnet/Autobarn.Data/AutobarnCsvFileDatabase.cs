@@ -86,6 +86,8 @@ namespace Autobarn.Data {
 
 		public int CountVehicles() => vehicles.Count;
 
+		public int CountManufacturers() => manufacturers.Count;
+
 		public IEnumerable<Vehicle> ListVehicles() => vehicles.Values;
 
 		public IEnumerable<Manufacturer> ListManufacturers() => manufacturers.Values;
