@@ -21,11 +21,19 @@ namespace Autobarn.Website.Controllers.api {
 		// GET: api/vehicles
 		[HttpGet]
 		[Produces("application/hal+json")]
-		public IActionResult Get(int index = 0, int count = 10) {
-			var items = db.ListVehicles().Skip(index).Take(count);
+		public IActionResult Get(char index = 'A') {
+			if((int) index < 122 && (int) index > 97)
+			{
+				index = (char) ((int) index - 40);
+			}
+			if((int) index < 65 || (int) index > 90)
+			{
+				return NotFound();
+			}
+			var items = db.ListVehicles().Where(v => v.Registration.StartsWith(index)).ToList();
 			var total = db.CountVehicles();
-			var _links = Paginate("/api/vehicles", index, count, total);
-			var result = new { _links, index, count, total, items };
+			var _links = Paginate("/api/vehicles", index);
+			var result = new { _links, index, items.Count, total, items };
 			return Ok(result);
 }
 		// GET api/vehicles/ABC123
@@ -73,13 +81,33 @@ namespace Autobarn.Website.Controllers.api {
 			return NoContent();
 		}
 
-		private dynamic Paginate(string url, int index, int count, int total) {
+		private char getNextChar(char letter)
+		{
+			char nextChar;
+			if (letter == 'Z')
+				nextChar = 'A';
+			else
+				nextChar = (char)(((int)letter) + 1);
+			return nextChar;
+		}
+
+		private char getPreviousChar(char letter)
+		{
+			char previousChar;
+			if (letter == 'A')
+				previousChar = 'Z';
+			else
+				previousChar = (char)(((int)letter) -1);
+			return previousChar;
+		}
+
+		private dynamic Paginate(string url, char firstLetter) {
 			dynamic links = new ExpandoObject();
 			links.self = new { href = url };
-			links.final = new { href = $"{url}?index={total - (total % count)}&count={count}" };
-			links.first = new { href = $"{url}?index=0&count={count}" };
-			if (index > 0) links.previous = new { href = $"{url}?index={index - count}&count={count}" };
-			if (index + count < total) links.next = new { href = $"{url}?index={index + count}&count={count}" };
+			links.final = new { href = $"{url}?index=Z" };
+			links.first = new { href = $"{url}?index=A" };
+			links.previous = new { href = $"{url}?index={getPreviousChar(firstLetter)}" };
+			links.next = new { href = $"{url}?index={getNextChar(firstLetter)}"};
 			return links;
 		}
 	}
