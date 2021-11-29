@@ -1,8 +1,11 @@
-﻿using System.Dynamic;
+﻿using System;
+using System.Dynamic;
 using System.Linq;
 using Autobarn.Data;
 using Autobarn.Data.Entities;
+using Autobarn.Messages;
 using Autobarn.Website.Models;
+using EasyNetQ;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -12,9 +15,11 @@ namespace Autobarn.Website.Controllers.api {
 	[ApiController]
 	public class VehiclesController : ControllerBase {
 		private readonly IAutobarnDatabase db;
+		private readonly IBus bus;
 
-		public VehiclesController (IAutobarnDatabase db) {
+		public VehiclesController (IAutobarnDatabase db, IBus bus) {
 			this.db = db;
+			this.bus = bus;
 		}
 
 		// GET: api/vehicles
@@ -37,16 +42,21 @@ namespace Autobarn.Website.Controllers.api {
 
 		// POST api/vehicles
 		[HttpPost]
-		public IActionResult Post ([FromBody] VehicleDto dto) {
-			var vehicleModel = db.FindModel (dto.ModelCode);
+		public IActionResult Post([FromBody] VehicleDto dto) {
+			var vehicleModel = db.FindModel(dto.ModelCode);
+			if(vehicleModel==default)
+			{
+				return NotFound("Model not found!");
+			}
 			var vehicle = new Vehicle {
 				Registration = dto.Registration,
-					Color = dto.Color,
-					Year = dto.Year,
-					VehicleModel = vehicleModel
+				Color = dto.Color,
+				Year = dto.Year,
+				VehicleModel = vehicleModel
 			};
-			db.CreateVehicle (vehicle);
-			return Ok (dto);
+			db.CreateVehicle(vehicle);
+			PublishNewVehicleMessage(vehicle);
+			return Created($"/api/vehicles/{vehicle.Registration}", dto);
 		}
 
 		// PUT api/vehicles/ABC123
@@ -129,14 +139,17 @@ namespace Autobarn.Website.Controllers.api {
 				return (char) (((int) letter) - 1);
 		}
 
-		private dynamic Paginate (string url, char firstLetter) {
-			dynamic links = new ExpandoObject ();
-			links.self = new { href = url };
-			links.final = new { href = $"{url}?index=Z" };
-			links.first = new { href = $"{url}?index=A" };
-			links.previous = new { href = $"{url}?index={getPreviousChar(firstLetter)}" };
-			links.next = new { href = $"{url}?index={getNextChar(firstLetter)}" };
-			return links;
+		private void PublishNewVehicleMessage (Vehicle vehicle) {
+			var message = new NewVehicleMessage () {
+				Registration = vehicle.Registration,
+					Manufacturer = vehicle.VehicleModel?.Manufacturer?.Name,
+					ModelName = vehicle.VehicleModel?.Name,
+					ModelCode = vehicle.VehicleModel?.Code,
+					Color = vehicle.Color,
+					Year = vehicle.Year,
+					ListedAtUtc = DateTime.UtcNow
+			};
+			bus.PubSub.Publish (message);
 		}
 	}
 }

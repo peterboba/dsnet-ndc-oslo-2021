@@ -7,7 +7,6 @@ using Newtonsoft.Json;
 
 namespace Autobarn.Website.Controllers.api {
     public static class HypermediaExtensions {
-
         public static dynamic ToResource(this Vehicle vehicle) {
             var resource = vehicle.ToDynamic();
             resource._links = new {
