@@ -9,7 +9,7 @@ The workshop handbook is online at **[https://ursatile.github.io/dsnet/](https:/
 
 The live examples we’ll be running during the workshop will be available at:
 
-**[https://workshop.ursatile.com:5001/](https://workshop.ursatile.com:5001/)**
+**[https://localhost:5001/](https://localhost:5001/)**
 
 *(Don’t panic - there’s nothing there until we’re actually running the workshop.)*
 
